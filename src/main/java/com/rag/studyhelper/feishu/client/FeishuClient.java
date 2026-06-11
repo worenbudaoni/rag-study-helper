@@ -46,6 +46,7 @@ public class FeishuClient {
             return cachedToken;
         }
         String json = "{\"app_id\":\"" + appId + "\",\"app_secret\":\"" + appSecret + "\"}";
+        // https://open.feishu.cn/document/server-docs/authentication-management/access-token/tenant_access_token_internal
         Request request = new Request.Builder()
                 .url(baseUrl + "/open-apis/auth/v3/tenant_access_token/internal")
                 .post(RequestBody.create(JSON, json))
@@ -56,7 +57,10 @@ public class FeishuClient {
                 throw new IOException("Failed to get access token: " + body);
             }
             cachedToken = body.get("tenant_access_token").asText();
+            // tenant_access_token 的最大有效期是 2 小时
+            // 7200 是秒
             int expire = body.get("expire").asInt(7200);
+            // 防御性编程 免得刚好过期 由于网络延时 造成接口调用失败
             tokenExpireAt = System.currentTimeMillis() + (expire - 60) * 1000L;
             return cachedToken;
         }
@@ -70,6 +74,7 @@ public class FeishuClient {
      */
     public List<JsonNode> listSpaces() throws IOException {
         List<JsonNode> result = new ArrayList<>();
+        // https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/list
         String url = baseUrl + "/open-apis/wiki/v2/spaces?page_size=50";
         Request request = new Request.Builder()
                 .url(url)
@@ -107,6 +112,7 @@ public class FeishuClient {
         List<WikiNode> currentLevelNodes = new ArrayList<>();
         String pageToken = null;
         do {
+            // https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/create
             StringBuilder url = new StringBuilder(baseUrl + "/open-apis/wiki/v2/spaces/" + spaceId + "/nodes");
             if (parentNodeToken != null) {
                 url.append("/").append(parentNodeToken).append("/children");
@@ -132,12 +138,20 @@ public class FeishuClient {
                 JsonNode items = body.path("data").path("items");
                 for (JsonNode item : items) {
                     WikiNode node = new WikiNode();
+                    // 节点token
                     node.setNodeToken(item.path("node_token").asText());
+                    // 对应文档类型的token，可根据 obj_type 判断属于哪种文档类型。
                     node.setObjToken(item.path("obj_token").asText());
+                    // 文档类型，对于快捷方式，该字段是对应的实体的obj_type。
+                    // 可选值有：
+                    // doc：旧版文档 sheet：表格 mindnote：思维导图 bitable：多维表格 file：文件 docx：新版文档 slides：幻灯片
                     node.setObjType(item.path("obj_type").asText());
+                    // 文档标题
                     node.setNodeTitle(item.path("title").asText());
                     node.setParentNodeToken(parentNodeToken);
+                    // 是否有子节点
                     node.setHasChild(item.path("has_child").asBoolean(false));
+                    // 文档最近编辑时间
                     String editTime = item.path("obj_edit_time").asText();
                     node.setUpdateTime(Long.parseLong(editTime.isEmpty() ? "0" : editTime));
                     currentLevelNodes.add(node);
@@ -160,6 +174,7 @@ public class FeishuClient {
      * 获取飞书文档纯文本内容。
      */
     public String getDocumentContent(String documentToken) throws IOException {
+        // https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/raw_content
         String url = baseUrl + "/open-apis/docx/v1/documents/" + documentToken + "/raw_content";
         Request request = new Request.Builder()
                 .url(url)
@@ -177,6 +192,8 @@ public class FeishuClient {
 
     /**
      * 获取电子表格内容，返回 Markdown 表格格式文本。
+     * 下面接口看这个，这里是汇总的
+     * https://open.feishu.cn/document/sales-statistics-base-on-spreadsheets/sales-statistics-based-on-sheets
      */
     public String getSheetContent(String spreadsheetToken) throws IOException {
         // 先获取元信息，知道有哪些 sheet 和行列数
@@ -237,6 +254,8 @@ public class FeishuClient {
 
     /**
      * 获取多维表格内容，返回文本格式。
+     * 下面接口看这个，这里是汇总的
+     * https://open.feishu.cn/document/quick-access-to-base/preparation
      */
     public String getBitableContent(String appToken) throws IOException {
         StringBuilder result = new StringBuilder();

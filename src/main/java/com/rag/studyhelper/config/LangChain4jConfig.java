@@ -106,7 +106,7 @@ public class LangChain4jConfig {
                 .temperature(temperature)
                 .timeout(Duration.ofSeconds(60))
                 // 本地的计数器，用来知道当前对话有多长，跟模型实际输出无关
-                .tokenizer(new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO))
+                .tokenizer(new OpenAiTokenizer())
                 .build();
     }
 
@@ -119,7 +119,7 @@ public class LangChain4jConfig {
                 .modelName(chatModelName)
                 .temperature(temperature)
                 .timeout(Duration.ofSeconds(60))
-                .tokenizer(new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO))
+                .tokenizer(new OpenAiTokenizer())
                 .build();
     }
 

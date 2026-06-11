@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,10 +53,10 @@ public class FeishuSyncService {
     }
 
 //    可以用来测试启动后 飞书文档 同步功能
-//    @PostConstruct
-//    public void init(){
-//        syncWiki();
-//    }
+    @PostConstruct
+    public void init(){
+        syncWiki();
+    }
 
     @Scheduled(cron = "${app.feishu.cron}")
     public void syncWiki() {

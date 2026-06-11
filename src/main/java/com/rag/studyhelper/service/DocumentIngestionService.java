@@ -10,13 +10,11 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
-import dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.apache.commons.io.IOUtils;
@@ -27,7 +25,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.codehaus.plexus.util.StringUtils;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -213,7 +210,7 @@ public class DocumentIngestionService {
                                         String contentHash, Long fileSize,
                                         String feishuNodeToken, String feishuObjType,
                                         Long feishuUpdateTime, String creator) throws IOException {
-        Tokenizer tokenizer = new OpenAiTokenizer(OpenAiChatModelName.GPT_3_5_TURBO);
+        Tokenizer tokenizer = new OpenAiTokenizer();
         String prefix = "[来源:" + fileName + "]\n";
         int prefixTokenCount = tokenizer.estimateTokenCountInText(prefix);
         if (prefixTokenCount > 200) {
