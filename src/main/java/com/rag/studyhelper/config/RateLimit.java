@@ -1,7 +1,5 @@
 package com.rag.studyhelper.config;
 
-import org.redisson.api.RateIntervalUnit;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -18,22 +16,18 @@ public @interface RateLimit {
     /**
      * 限流 key
      */
-    String key();
+    String value();
 
     /**
      * 令牌桶容量
      */
-    long count();
+    long maxCapacity();
 
     /**
      * 补充令牌的时间，默认 1 分钟补充 count 个令牌
+     * 默认秒
      */
-    long supplementTime() default 1L;
-
-    /**
-     * 时间间隔单位，默认分钟
-     */
-    RateIntervalUnit supplementTimeUnit() default RateIntervalUnit.MINUTES;
+    long supplementTimeOfSeconds() default 60L;
 
     /**
      * 每日最大调用次数，默认 0 表示不限制

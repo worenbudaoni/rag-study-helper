@@ -128,10 +128,16 @@
         </dependency>
 
         <!-- Redisson 分布式工具（令牌桶限流） -->
+<!--        <dependency>-->
+<!--            <groupId>org.redisson</groupId>-->
+<!--            <artifactId>redisson</artifactId>-->
+<!--            <version>4.5.0</version>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>org.redisson</groupId>
-            <artifactId>redisson</artifactId>
-            <version>3.24.3</version>
+            <artifactId>redisson-spring-boot-starter</artifactId>
+            <version>4.5.0</version>
+            <scope>compile</scope>
         </dependency>
 
         <!-- Apache Commons IO -->

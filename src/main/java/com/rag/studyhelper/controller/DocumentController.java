@@ -4,7 +4,6 @@ import com.rag.studyhelper.config.RateLimit;
 import com.rag.studyhelper.model.DocumentInfo;
 import com.rag.studyhelper.service.DocumentIngestionService;
 import com.rag.studyhelper.utils.Results;
-import org.redisson.api.RateIntervalUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,7 +24,7 @@ public class DocumentController {
     /**
      * 上传文件
      */
-    @RateLimit(key = "upload", count = 10, supplementTime = 1, supplementTimeUnit = RateIntervalUnit.MINUTES)
+    @RateLimit(value = "upload", maxCapacity = 10, supplementTimeOfSeconds = 60)
     @PostMapping("/upload")
     public Results<DocumentInfo> upload(@RequestParam("file") MultipartFile file) {
         String originalName = file.getOriginalFilename();
