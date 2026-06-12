@@ -8,7 +8,7 @@
 <p align="center">
   <strong>企业级 RAG（检索增强生成）问答系统</strong>
   <br>
-  Spring Boot 2.6 · LangChain4j 0.35 · DeepSeek · 多源知识库 · 分布式限流
+  Spring Boot 2.6 · LangChain4j 0.35 · 多源知识库 · 分布式限流
 </p>
 
 <p align="center">
