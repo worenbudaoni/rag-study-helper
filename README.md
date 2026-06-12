@@ -1,6 +1,23 @@
-# RAG Study Helper
 
-基于 **Spring Boot 2.6 + LangChain4j 0.35** 构建的企业级 RAG（Retrieval-Augmented Generation）问答系统，支持多轮对话、多源文档知识库、语义检索重排序、飞书知识库自动同步，以及多实例水平扩展。
+<p align="center">
+  <img src="rag-comic.png" alt="RAG Study Helper" width="720">
+</p>
+
+<h1 align="center">RAG Study Helper</h1>
+
+<p align="center">
+  <strong>企业级 RAG（检索增强生成）问答系统</strong>
+  <br>
+  Spring Boot 2.6 · LangChain4j 0.35 · DeepSeek · 多源知识库 · 分布式限流
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Java-8-%23ED8B00?logo=openjdk">
+  <img src="https://img.shields.io/badge/Spring_Boot-2.6.13-%236DB33F?logo=spring">
+  <img src="https://img.shields.io/badge/LangChain4j-0.35.0-blue">
+  <img src="https://img.shields.io/badge/Redisson-4.5.0-%23DC382D?logo=redis">
+  <img src="https://img.shields.io/badge/license-MIT-green">
+</p>
 
 > ⚠ **JDK 8 兼容说明：** LangChain4j 从 0.36.0 起要求 JDK 17，本项目使用最后支持 JDK 8 的 0.35.0。因此 Chroma 服务端锁定为 0.4.24（0.6.x+ API 不兼容），Milvus 使用 2.3.x。如需升级新版，需同时升级 JDK 17 + Spring Boot 3.x。
 
@@ -24,24 +41,25 @@
 
 ## 系统架构
 
+![系统架构图](rag.png)
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                     Web UI (index.html)                       │
 │     SSE 流式渲染 · Markdown 解析 · 会话管理 · 知识库面板       │
 │     深色/亮色主题 · 移动端适配 · 消息复制 · 自定义提示框       │
-│     统一 Results JSON 解析 · SSE error 事件处理                │
 └───────────────────────┬──────────────────────────────────────┘
                         │ POST /api/chat {sessionId, question}
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                    RateLimitAspect (@RateLimit)               │
-│        Redisson 令牌桶（IP 30次/分 + 每日 10,000 次）         │
+│        Redisson 令牌桶（IP + 全局每日）                       │
 │        429 → 统一 Results 格式返回                            │
 └───────────────────────┬──────────────────────────────────────┘
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                      ChatController                           │
-│            SseEmitter (120s timeout) · Jackson 序列化          │
+│            SseEmitter (60s timeout) · Jackson 序列化          │
 └───────────────────────┬──────────────────────────────────────┘
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -66,9 +84,9 @@
 │                                                               │
 │  ┌───────────────────────────────────────────────────────┐    │
 │  │ 文档来源                                               │   │
-│  │  ├─ Web 上传（Multipart 文件上传，SHA256 去重）         │   │
-│  │  ├─ 目录扫描（data/docs/ 自动扫描）                     │   │
-│  │  └─ 飞书知识库同步（Feishu Wiki Sync）                  │   │
+│  │  ├─ Web 上传（Multipart, SHA256 去重）                 │   │
+│  │  ├─ 目录扫描（data/docs/ 自动扫描）                    │   │
+│  │  └─ 飞书知识库同步（Feishu Wiki Sync）                 │   │
 │  └───────────────┬───────────────────────────────────────┘    │
 │                  │ 元数据                                     │
 │                  ▼                                            │
@@ -79,7 +97,7 @@
 └──────────────────────────────────────────────────────────────┘
 
                          ┌────────────┐
-                         │   Redis    │ ← 多实例共享会话 + 分布式限流计数器
+                         │   Redis    │ ← 多实例共享会话 + 分布式限流
                          └────────────┘
 ```
 
@@ -121,7 +139,7 @@ Docker Compose 会同时启动以下服务：
 |------|------|------|
 | app | 本地构建 | Spring Boot 应用，端口 8080 |
 | mysql | mysql:8.0 | 文档元数据存储，首次启动自动建表 |
-| redis | redis:7-alpine | 多实例对话上下文共享 |
+| redis | redis:7-alpine | 多实例对话上下文共享 + 分布式限流 |
 | chroma / milvus | — | 向量数据库（按所选 compose 文件） |
 
 ### 本地 Maven 运行
@@ -156,7 +174,9 @@ cp .env.example .env
 | `APP_RAG_CHAT_API_KEY` | Chat 模型 API Key | — |
 | `APP_RAG_EMBEDDING_API_KEY` | Embedding 模型 API Key | — |
 | `APP_RAG_RERANK_API_KEY` | Rerank API Key（不设则复用 Embedding Key） | — |
-| `APP_RATE_LIMIT_IP_RATE` | IP 令牌桶容量及补充速率（次/分钟） | 20 |
+| `APP_RATE_LIMIT_IP_RATE` | IP 令牌桶容量（次/补充周期） | 20 |
+| `APP_RATE_LIMIT_IP_SUPPLEMENT_SECONDS` | IP 令牌桶补充周期（秒） | 60 |
+| `APP_RATE_LIMIT_IP_EXPIRE_HOURS` | IP 令牌桶过期时间（小时） | 24 |
 | `APP_RATE_LIMIT_DAILY_MAX` | 全局每日调用上限 | 10000 |
 | `MYSQL_ROOT_PASSWORD` | MySQL 密码 | root |
 | `SPRING_REDIS_HOST` | Redis 地址 | redis |
@@ -203,7 +223,7 @@ APP_RAG_RERANK_MODEL_NAME=BAAI/bge-reranker-v2-m3
 
 ## 向量数据库
 
-系统支持三种向量存储方案，通过 `docker-compose` 文件切换。
+系统支持三种向量存储方案，通过 `vector.store.type` 配置切换。
 
 | 方案 | 文件 | 适用场景 |
 |------|------|---------|
@@ -240,7 +260,7 @@ docker compose -f docker-compose-milvus.yml ps
 | 方式 | 说明 | 去重策略 |
 |------|------|---------|
 | **Web 上传** | 知识库面板拖拽或选择文件上传 | 内容 SHA256 哈希 |
-| **目录扫描** | 将文档放入 `data/docs/`，点击「扫描目录」 | 内容 SHA256 哈希 |
+| **目录扫描** | 将文档放入 `data/docs/`，应用启动时自动扫描 | 内容 SHA256 哈希 |
 | **飞书同步** | 配置飞书应用后自动同步知识库文档 | nodeToken + updateTime |
 
 ### 入库流程
@@ -248,7 +268,7 @@ docker compose -f docker-compose-milvus.yml ps
 ```
 接收文档 → 去重检查（查询 documents 表）
   ├─ 已存在 → 跳过，返回已有记录
-  └─ 不存在 → 解析 → 分块（300 字符/块，60 字符重叠）
+  └─ 不存在 → 解析 → 分块（512 token/块，51 token 重叠）
               → 批量 Embedding（10 条/批）
               → 写入向量库 → 捕获 vectorId
               → INSERT documents + INSERT document_chunks
@@ -265,9 +285,9 @@ docker compose -f docker-compose-milvus.yml ps
 | PPTX | Apache POI |
 | HTML / HTM | JSoup |
 
-### 文档更新
+### 文档管理
 
-- **上传文档重复上传**：SHA256 哈希一致则跳过
+- **去重机制**：基于 SHA256 内容哈希，重复上传自动跳过
 - **飞书文档更新**：自动删除旧向量，重新入库并更新 MySQL 记录
 - **飞书文档远程删除**：定时同步时自动清理本地对应的向量和记录
 - **API 删除**：`DELETE /api/documents/{id}` 同步删除向量库和 MySQL 数据
@@ -327,13 +347,11 @@ APP_FEISHU_SYNC_ENABLED=true
 
 **反向删除：** 同步时对比飞书远程节点列表，自动清理本地已不存在的文档及其向量数据。
 
-```
-
 ---
 
 ## API 参考
 
-所有接口统一返回 `Results<T>` 格式，前端通过 `resCode` 判断状态、`msg` 显示提示、`obj` 获取数据。
+所有接口统一返回 `Results<T>` 格式：
 
 ```json
 {
@@ -357,7 +375,7 @@ APP_FEISHU_SYNC_ENABLED=true
 |------|------|---------|---------|------|
 | `/api/chat` | POST | `{"sessionId","question"}` | SSE `text/event-stream` | 流式问答，`event:error` 时数据为 `Results` 格式 |
 | `/api/documents/upload` | POST | `multipart/form-data` | `Results<DocumentInfo>` | 上传文档 |
-| `/api/documents` | GET | — | `Results<List<String>>` | 已入库文档列表 |
+| `/api/documents` | GET | — | `Results<List<DocumentInfo>>` | 已入库文档列表 |
 | `/api/documents/scan` | POST | — | `Results<List<DocumentInfo>>` | 扫描 `data/docs/` 目录 |
 | `/api/documents/{id}` | DELETE | — | `Results<Void>` | 删除文档及其向量数据 |
 
@@ -392,45 +410,40 @@ data: [DONE]
 
 ### 限流层级
 
-| 层级 | 方式 | 参数 | 目的 |
-|------|------|------|------|
-| IP 令牌桶 | Redisson `RRateLimiter`（分布式） | 容量 20，补充 20次/分 | 控制单 IP 请求速率 |
+| 层级 | 方式 | 默认参数 | 目的 |
+|------|------|---------|------|
+| IP 令牌桶 | Redisson `RRateLimiter`（分布式） | 容量 20，60 秒补充 20 个 | 控制单 IP 请求速率 |
 | 全局每日计数 | Redis INCR + EXPIRE | 10,000 次/天 | 成本兜底 |
 
 ### 实现方式
 
-使用 **`@RateLimit` 注解 + AOP 切面**：
+使用 **`@RateLimit` / `@IpRateLimit` 注解 + AOP 切面**，参数编码进 Redis Key：
 
 ```java
-@RateLimit
-@PostMapping(value = "/api/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-public SseEmitter chat(@RequestBody ChatRequest request) {
-    // ...
-}
+@RateLimit(value = "upload", maxCapacity = 10, supplementTimeOfSeconds = 60)
+@PostMapping("/upload")
+public Results<DocumentInfo> upload(...) { ... }
 ```
 
-- 注解标记需要限流的方法
+- `@RateLimit` — 通用限流注解，支持自定义容量、补充周期、过期时间、每日上限
+- `@IpRateLimit` — 轻量 IP 限流注解，参数从 `application.yml` 热读取
 - `RateLimitAspect` 环绕通知在方法执行前检查令牌桶和每日计数
 - 超限时返回 `resCode=429` 的 `Results` JSON，前端统一展示提示
 
-**热更新设计：** 限流参数编码进 Redis Key（如 `rl:ip:192.168.1.1:20`），
-配置变更后自动使用新 Key，旧 Key 随 24h TTL 过期，无需重启或重建即可生效。
+**热更新设计：** 限流参数编码进 Redis Key（如 `rl:upload:10:60`），配置变更后自动使用新 Key，旧 Key 随 TTL 过期，无需重启。
 
 ### 配置
 
 ```yaml
 app:
   rate-limit:
-    ip-rate: 20                            # IP 令牌桶容量及补充速率（次/分钟）
-    daily-max: 10000                       # 每日调用上限
+    ip-rate: 20                            # IP 令牌桶容量
+    ip-supplement-seconds: 60              # IP 令牌桶补充周期（秒）
+    ip-expire-hours: 24                    # IP 令牌桶过期时间（小时）
+    daily-max: 10000                       # 全局每日调用上限
 ```
 
 所有参数支持环境变量覆盖（`APP_RATE_LIMIT_IP_RATE` 等）。
-
-### 无 Redis 降级
-
-当 Redis 不可用时（如测试环境），`RateLimitAspect` 自动跳过限流逻辑，
-不影响业务正常调用。
 
 ---
 
@@ -447,7 +460,7 @@ src/main/java/com/rag/studyhelper/
 │   ├── RedisConversationStore.java      # Redis 会话存储（多实例共享）
 │   ├── ConversationStore.java           # 会话存储接口
 │   ├── RateLimitService.java            # 分布式限流（Redisson 令牌桶 + 每日计数）
-│   ├── RerankService.java               # SiliconFlow Rerank 调用
+│   ├── RerankService.java               # Rerank 重排序服务
 │   └── QueryRewriteService.java         # 多轮查询改写
 ├── config/
 │   ├── LangChain4jConfig.java           # LLM / Embedding / VectorStore 配置
@@ -456,6 +469,7 @@ src/main/java/com/rag/studyhelper/
 │   ├── GlobalExceptionHandler.java      # @RestControllerAdvice 统一异常处理
 │   ├── RedissonConfig.java              # Redisson 客户端（复用 spring.redis.*）
 │   ├── RateLimit.java                   # @RateLimit 限流注解
+│   ├── IpRateLimit.java                 # @IpRateLimit IP 限流注解
 │   └── RateLimitAspect.java             # 限流切面（AOP 环绕通知）
 ├── utils/
 │   └── Results.java                     # 统一 API 响应体（resCode / msg / obj）
@@ -463,11 +477,11 @@ src/main/java/com/rag/studyhelper/
 │   ├── DocumentsMapper.java             # 文档元数据 Mapper
 │   └── DocumentChunksMapper.java        # 文档分块映射 Mapper
 ├── model/
-│   ├── ChatRequest.java
-│   ├── ChatMessage.java
-│   ├── DocumentInfo.java
+│   ├── ChatRequest.java                 # 聊天请求体
+│   ├── ChatMessage.java                 # 聊天消息
+│   ├── DocumentInfo.java                # 文档信息 DTO
 │   ├── Documents.java                   # documents 表实体
-│   └── DocumentChunks.java             # document_chunks 表实体
+│   └── DocumentChunks.java              # document_chunks 表实体
 ├── feishu/
 │   ├── client/
 │   │   ├── FeishuClient.java            # 飞书 API 封装（文档/表格/多维表格）
@@ -481,10 +495,16 @@ src/main/java/com/rag/studyhelper/
 
 src/main/resources/
 ├── application.yml                      # 主配置
-└── static/index.html                    # 前端页面
+└── static/index.html                    # 前端页面（1777 行，单页应用）
 
 项目根目录/
 ├── init.sql                             # MySQL DDL（首次启动自动执行）
+├── Dockerfile                           # 多阶段构建（Maven + Temurin 8）
+├── docker-compose.yml                   # InMemory 向量库
+├── docker-compose-chroma.yml            # Chroma 向量库
+├── docker-compose-milvus.yml            # Milvus 向量库
+├── .env.example                         # 环境变量模板
+└── rag.png                              # 系统架构图
 
 src/test/java/com/rag/studyhelper/
 ├── config/
@@ -536,14 +556,14 @@ mvn test -Dtest=ChatControllerIntegrationTest
 | Embedding | BAAI/bge-large-zh-v1.5 | 中文优化，1024 维 |
 | Rerank | BAAI/bge-reranker-v2-m3 | 交叉编码器重排序 |
 | 向量存储 | InMemory / Chroma 0.4.24 / Milvus 2.3.3 | 配置切换，适应不同规模 |
-| 会话缓存 | Redis | 多实例共享，TTL 自动过期 |
+| 会话缓存 | Redis Streams / String | 多实例共享，TTL 自动过期 |
 | 文档元数据 | MySQL 8.0 + MyBatis-Plus 3.5.2 | 入库去重、文档管理、分块映射 |
 | 文档解析 | Apache POI 5.1.0 + JSoup + PDFBox | Excel / Word / PPT / HTML / PDF |
 | 定时调度 | Spring @Scheduled | 飞书知识库定期同步 |
-| 构建 | Maven | Surefire 排除集成测试 |
+| 构建 | Maven + Docker 多阶段构建 | Surefire 排除集成测试 |
 | 统一响应 | `Results<T>` + `GlobalExceptionHandler` | 所有同步 API 返回 `resCode/msg/obj` 格式，SSE 错误走 `event:error` 通道 |
-| 限流 | `@RateLimit` + AOP + Redisson `RRateLimiter` | 分布式令牌桶，多实例共享；注解式声明，无 Redis 时自动降级 |
-| 分布式工具 | Redisson 3.24.3 | 限流令牌桶，低配连接池避免资源竞争 |
+| 限流 | `@RateLimit` / `@IpRateLimit` + AOP + Redisson `RRateLimiter` | 分布式令牌桶，多实例共享；注解式声明，支持热更新 |
+| 分布式工具 | Redisson 4.5.0（`redisson-spring-boot-starter`） | 限流令牌桶，与 Spring Data Redis 共享连接 |
 
 ---
 
@@ -551,7 +571,7 @@ mvn test -Dtest=ChatControllerIntegrationTest
 
 MIT
 
-
+---
 
 ## 友情链接
 
