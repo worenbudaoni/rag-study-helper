@@ -6,7 +6,6 @@ import com.rag.studyhelper.utils.Results;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.redisson.api.RateIntervalUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -37,6 +36,12 @@ public class RateLimitAspect {
     @Value("${app.rate-limit.ip-rate:20}")
     private int ipRate;
 
+    @Value("${app.rate-limit.ip-supplement-seconds:60}")
+    private int ipSupplementSeconds;
+
+    @Value("${app.rate-limit.ip-expire-hours:24}")
+    private int ipExpireHours;
+
     @Value("${app.rate-limit.daily-max:10000}")
     private int dailyMax;
 
@@ -62,7 +67,7 @@ public class RateLimitAspect {
 
         // 2. IP 令牌桶限流
         String clientIp = getClientIp(request);
-        if (!rateLimitService.tryAcquire("ip:" +  key + ":" + clientIp, ipRate)) {
+        if (!rateLimitService.tryAcquire("ip:" +  key + ":" + clientIp, ipRate, ipSupplementSeconds, ipExpireHours)) {
             writeRateLimitResponse(response, "请求过于频繁，请稍后再试");
             return null;
         }
@@ -82,10 +87,9 @@ public class RateLimitAspect {
                 RequestContextHolder.currentRequestAttributes();
         HttpServletResponse response = attrs.getResponse();
 
-        String key = rateLimit.key();
-        long count = rateLimit.count();
-        long supplementTime = rateLimit.supplementTime();
-        RateIntervalUnit rateIntervalUnit = rateLimit.supplementTimeUnit();
+        String key = rateLimit.value();
+        long maxCapacity = rateLimit.maxCapacity();
+        long supplementTimeOfSeconds = rateLimit.supplementTimeOfSeconds();
         long timeOutOfHours = rateLimit.timeOutOfHours();
         int dailyMaximumCount = rateLimit.dailyMaximumCount();
 
@@ -98,7 +102,7 @@ public class RateLimitAspect {
         }
 
         // 令牌桶限流
-        if (!rateLimitService.tryAcquire(key, count, supplementTime, rateIntervalUnit, timeOutOfHours)) {
+        if (!rateLimitService.tryAcquire(key, maxCapacity, supplementTimeOfSeconds, timeOutOfHours)) {
             writeRateLimitResponse(response, "请求过于频繁，请稍后再试");
             return null;
         }

@@ -11,27 +11,11 @@
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <spring-boot.version>2.6.13</spring-boot.version>
+        <!--    springboot2 的最后一个版本    -->
+        <spring-boot.version>2.7.18</spring-boot.version>
+        <!--    LangChain4j 支持 jdk8 + springboot2 的最后一个版本    -->
         <langchain4j.version>0.35.0</langchain4j.version>
     </properties>
-
-    <!-- 绕过内网不可达的 Nexus 镜像，直连 Maven Central -->
-    <repositories>
-        <repository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <releases><enabled>true</enabled></releases>
-            <snapshots><enabled>false</enabled></snapshots>
-        </repository>
-    </repositories>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <releases><enabled>true</enabled></releases>
-            <snapshots><enabled>false</enabled></snapshots>
-        </pluginRepository>
-    </pluginRepositories>
 
     <dependencies>
         <dependency>
@@ -85,7 +69,7 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.1.0</version>
+            <version>5.5.1</version>
         </dependency>
 
         <!-- JSoup: HTML parsing -->
@@ -130,15 +114,40 @@
         <!-- Redisson 分布式工具（令牌桶限流） -->
         <dependency>
             <groupId>org.redisson</groupId>
-            <artifactId>redisson</artifactId>
-            <version>3.24.3</version>
+            <artifactId>redisson-spring-boot-starter</artifactId>
+            <version>4.5.0</version>
+            <!-- redisson-spring-data-40 对应 Spring Data Redis 4.x -->
+            <!-- 如果你用的 springboot3.x 的版本 就把这行和下面 redisson-spring-data-27 给删掉就好 -->
+            <!--
+            我选这个版本是因为这个版本的 限流有更新 原因如下
+            使用 一句话 （lua 脚本）
+            limiter.trySetRate(RateType.OVERALL, maxCapacity, Duration.ofSeconds(supplementTimeOfSeconds), Duration.ofHours(timeOutOfHours));
+            替代 下面两句话 （减少） 保证了原子性 避免网络或者项目问题导致 key 永不过期的问题（概率无敌小，但还是有可能）
+            limiter.trySetRate(RateType.OVERALL, permitsPerMin, supplementTime, supplementTimeUnit);
+            limiter.expire(Duration.ofHours(timeOutOfHours));
+            -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.redisson</groupId>
+                    <artifactId>redisson-spring-data-40</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+        <!-- 如果你用的 springboot3.x 的版本 就把这行和上面 redisson-spring-data-40 给删掉就好 -->
+        <!-- Spring Boot 2.7.x → spring-data-redis 2.7.x → 用 spring-data-27 -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-data-27</artifactId>
+            <version>4.5.0</version>
+            <scope>compile</scope>
+        </dependency>
+
 
         <!-- Apache Commons IO -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.11.0</version>
+            <version>2.22.0</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -178,7 +187,7 @@
             <dependency>
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
-                <version>1.33</version>
+                <version>2.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -53,8 +55,8 @@ public class RerankService {
      * 就是把你查的内容和从向量数据库得到的文档分片对比，把最先关的文档排前面
      */
     public List<TextSegment> rerank(String query, List<TextSegment> documents, int topN) {
-        if (documents.isEmpty()) {
-            return documents;
+        if (documents == null || documents.size() <= topN) {
+            return documents == null ? new ArrayList<>() : documents;
         }
 
         Map<String, Object> requestBody = new HashMap<>();
